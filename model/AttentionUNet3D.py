@@ -52,14 +52,14 @@ class AttentionBlock3D(nn.Module):
         return x * psi
 
 
-class CBAM3D(nn.Module):
+class MDAM3D(nn.Module):
     """
-    CBAM (Convolutional Block Attention Module) 3D版本
+    MDAM (Convolutional Block Attention Module) 3D版本
     结合通道注意力和空间注意力
-    论文: CBAM: Convolutional Block Attention Module
+    论文: MDAM: Convolutional Block Attention Module
     """
     def __init__(self, channels, reduction=16):
-        super(CBAM3D, self).__init__()
+        super(MDAM3D, self).__init__()
         
         # 通道注意力
         self.avg_pool = nn.AdaptiveAvgPool3d(1)
@@ -99,7 +99,7 @@ class CBAM3D(nn.Module):
 
 class ConvBlock3D(nn.Module):
     """3D卷积块"""
-    def __init__(self, in_channels, out_channels, use_cbam=False):
+    def __init__(self, in_channels, out_channels, use_mdam=False):
         super(ConvBlock3D, self).__init__()
         
         self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
@@ -110,9 +110,9 @@ class ConvBlock3D(nn.Module):
         self.bn2 = nn.BatchNorm3d(out_channels)
         self.relu2 = nn.ReLU(inplace=True)
         
-        self.use_cbam = use_cbam
-        if use_cbam:
-            self.cbam = CBAM3D(out_channels)
+        self.use_mdam = use_mdam
+        if use_mdam:
+            self.mdam = MDAM3D(out_channels)
     
     def forward(self, x):
         x = self.conv1(x)
@@ -123,8 +123,8 @@ class ConvBlock3D(nn.Module):
         x = self.bn2(x)
         x = self.relu2(x)
         
-        if self.use_cbam:
-            x = self.cbam(x)
+        if self.use_mdam:
+            x = self.mdam(x)
         
         return x
 
@@ -132,45 +132,45 @@ class ConvBlock3D(nn.Module):
 class AttentionUNet3D(nn.Module):
     """
     Attention U-Net 3D
-    结合注意力门控和CBAM的改进U-Net
+    结合注意力门控和MDAM的改进U-Net
     """
-    def __init__(self, in_channels=2, out_channels=1, init_features=16, use_cbam=True):
+    def __init__(self, in_channels=2, out_channels=1, init_features=16, use_mdam=True):
         super(AttentionUNet3D, self).__init__()
         
         features = init_features
         
         # 编码器
-        self.encoder1 = ConvBlock3D(in_channels, features, use_cbam=use_cbam)
+        self.encoder1 = ConvBlock3D(in_channels, features, use_mdam=use_mdam)
         self.pool1 = nn.MaxPool3d(kernel_size=2, stride=2)
         
-        self.encoder2 = ConvBlock3D(features, features * 2, use_cbam=use_cbam)
+        self.encoder2 = ConvBlock3D(features, features * 2, use_mdam=use_mdam)
         self.pool2 = nn.MaxPool3d(kernel_size=2, stride=2)
         
-        self.encoder3 = ConvBlock3D(features * 2, features * 4, use_cbam=use_cbam)
+        self.encoder3 = ConvBlock3D(features * 2, features * 4, use_mdam=use_mdam)
         self.pool3 = nn.MaxPool3d(kernel_size=2, stride=2)
         
-        self.encoder4 = ConvBlock3D(features * 4, features * 8, use_cbam=use_cbam)
+        self.encoder4 = ConvBlock3D(features * 4, features * 8, use_mdam=use_mdam)
         self.pool4 = nn.MaxPool3d(kernel_size=2, stride=2)
         
         # 瓶颈层
-        self.bottleneck = ConvBlock3D(features * 8, features * 16, use_cbam=use_cbam)
+        self.bottleneck = ConvBlock3D(features * 8, features * 16, use_mdam=use_mdam)
         
         # 解码器
         self.upconv4 = nn.ConvTranspose3d(features * 16, features * 8, kernel_size=2, stride=2)
         self.att4 = AttentionBlock3D(F_g=features * 8, F_l=features * 8, F_int=features * 4)
-        self.decoder4 = ConvBlock3D(features * 16, features * 8, use_cbam=use_cbam)
+        self.decoder4 = ConvBlock3D(features * 16, features * 8, use_mdam=use_mdam)
         
         self.upconv3 = nn.ConvTranspose3d(features * 8, features * 4, kernel_size=2, stride=2)
         self.att3 = AttentionBlock3D(F_g=features * 4, F_l=features * 4, F_int=features * 2)
-        self.decoder3 = ConvBlock3D(features * 8, features * 4, use_cbam=use_cbam)
+        self.decoder3 = ConvBlock3D(features * 8, features * 4, use_mdam=use_mdam)
         
         self.upconv2 = nn.ConvTranspose3d(features * 4, features * 2, kernel_size=2, stride=2)
         self.att2 = AttentionBlock3D(F_g=features * 2, F_l=features * 2, F_int=features)
-        self.decoder2 = ConvBlock3D(features * 4, features * 2, use_cbam=use_cbam)
+        self.decoder2 = ConvBlock3D(features * 4, features * 2, use_mdam=use_mdam)
         
         self.upconv1 = nn.ConvTranspose3d(features * 2, features, kernel_size=2, stride=2)
         self.att1 = AttentionBlock3D(F_g=features, F_l=features, F_int=features // 2)
-        self.decoder1 = ConvBlock3D(features * 2, features, use_cbam=use_cbam)
+        self.decoder1 = ConvBlock3D(features * 2, features, use_mdam=use_mdam)
         
         # 输出层
         self.conv_out = nn.Conv3d(features, out_channels, kernel_size=1)
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     print("=" * 60)
     
     # 创建模型
-    model = AttentionUNet3D(in_channels=2, out_channels=1, init_features=16, use_cbam=True)
+    model = AttentionUNet3D(in_channels=2, out_channels=1, init_features=16, use_mdam=True)
     
     # 测试输入
     batch_size = 1
