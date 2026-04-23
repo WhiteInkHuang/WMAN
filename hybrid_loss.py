@@ -57,9 +57,7 @@ class HybridDetectionLoss(nn.Module):
 
 
 class AdaptiveDetectionLoss(nn.Module):
-    """
-    自适应检测损失 - 根据训练阶段动态调整权重
-    """
+   
     def __init__(self):
         super(AdaptiveDetectionLoss, self).__init__()
         self.ciou_loss = CIoULoss()
@@ -107,8 +105,7 @@ class AdaptiveDetectionLoss(nn.Module):
 
 # 测试
 if __name__ == "__main__":
-    print("测试混合损失函数")
-    
+   
     pred = torch.rand(4, 4)
     target = torch.rand(4, 4)
     
@@ -131,4 +128,4 @@ if __name__ == "__main__":
     loss = adaptive_loss(pred, target)
     print(f"Adaptive Loss (epoch 150): {loss:.4f}")
     
-    print("✓ 测试通过!")
+    
