@@ -1,6 +1,3 @@
-"""
-数据增强模块 - 针对医学图像检测任务
-"""
 import torch
 import numpy as np
 import random
@@ -9,10 +6,7 @@ import torch.nn.functional as F
 
 
 class DetectionAugmentation:
-    """
-    检测任务的数据增强
-    包含：随机翻转、旋转、缩放、裁剪、对比度调整等
-    """
+    
     def __init__(self, 
                  flip_prob=0.5,
                  rotate_prob=0.5,
@@ -51,17 +45,7 @@ class DetectionAugmentation:
         self.brightness_range = brightness_range
     
     def __call__(self, image, bbox):
-        """
-        应用数据增强
-        
-        Args:
-            image: [2, H, W] tensor
-            bbox: [N, 4] tensor, 归一化坐标 [xmin, ymin, xmax, ymax]
-        
-        Returns:
-            augmented_image: [2, H, W]
-            augmented_bbox: [N, 4]
-        """
+       
         # 随机水平翻转
         if random.random() < self.flip_prob:
             image, bbox = self.horizontal_flip(image, bbox)
@@ -111,10 +95,7 @@ class DetectionAugmentation:
         return image, bbox
     
     def rotate(self, image, bbox, angle):
-        """
-        旋转图像和边界框（小角度）
-        注意：旋转后边界框会变大（外接矩形）
-        """
+       
         # 转换为 [1, C, H, W] 格式
         image = image.unsqueeze(0)
         
@@ -133,14 +114,11 @@ class DetectionAugmentation:
         image = F.grid_sample(image, grid, align_corners=False)
         image = image.squeeze(0)
         
-        # 边界框旋转（简化处理：保持不变，因为小角度旋转影响不大）
-        # 对于更精确的处理，需要旋转四个角点然后计算新的外接矩形
+        
         return image, bbox
     
     def scale(self, image, bbox, scale):
-        """
-        缩放图像和边界框
-        """
+        
         C, H, W = image.shape
         new_H = int(H * scale)
         new_W = int(W * scale)
@@ -205,10 +183,7 @@ class DetectionAugmentation:
         return image
     
     def crop_around_bbox(self, image, bbox):
-        """
-        围绕边界框裁剪（保留上下文）
-        这对小目标检测特别有效
-        """
+        
         C, H, W = image.shape
         
         # 取第一个边界框
@@ -282,4 +257,3 @@ if __name__ == "__main__":
     print(f"增强后边界框: {aug_bbox}")
     print(f"图像范围: [{aug_image.min():.4f}, {aug_image.max():.4f}]")
     
-    print("\n✓ 数据增强测试通过!")
