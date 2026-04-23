@@ -1,17 +1,9 @@
-"""
-2D检测模型（适配单切片数据）
-输出边界框而不是分割mask
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class Detection2DCNN(nn.Module):
-    """
-    2D CNN检测模型
-    输入: [B, 2, H, W]
-    输出: [B, 4] - 边界框 [x_min, y_min, x_max, y_max]
-    """
+  
     def __init__(self, in_channels=2, init_features=16):
         super(Detection2DCNN, self).__init__()
         
@@ -107,21 +99,21 @@ class AttentionDetection2D(nn.Module):
         
         features = init_features
         
-        # 编码器（带CBAM）
-        self.encoder1 = self._block_with_cbam(in_channels, features)
+        # 编码器
+        self.encoder1 = self._block_with_mdam(in_channels, features)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.encoder2 = self._block_with_cbam(features, features * 2)
+        self.encoder2 = self._block_with_mdam(features, features * 2)
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.encoder3 = self._block_with_cbam(features * 2, features * 4)
+        self.encoder3 = self._block_with_mdam(features * 2, features * 4)
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.encoder4 = self._block_with_cbam(features * 4, features * 8)
+        self.encoder4 = self._block_with_mdam(features * 4, features * 8)
         self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
         
         # 瓶颈层
-        self.bottleneck = self._block_with_cbam(features * 8, features * 16)
+        self.bottleneck = self._block_with_mdam(features * 8, features * 16)
         
         # 全局平均池化
         self.global_pool = nn.AdaptiveAvgPool2d(1)
@@ -177,7 +169,7 @@ class AttentionDetection2D(nn.Module):
         
         return output
     
-    def _block_with_cbam(self, in_channels, features):
+    def _block_with_mdam(self, in_channels, features):
         return nn.Sequential(
             nn.Conv2d(in_channels, features, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(features),
@@ -185,16 +177,15 @@ class AttentionDetection2D(nn.Module):
             nn.Conv2d(features, features, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(features),
             nn.ReLU(inplace=True),
-            CBAM2D(features)
+            MDAM2D(features)
         )
 
 
-class CBAM2D(nn.Module):
-    """CBAM注意力模块（2D版本）"""
+class MDAM2D(nn.Module):
+   
     def __init__(self, channels, reduction=16):
-        super(CBAM2D, self).__init__()
+        super(MDAM2D, self).__init__()
         
-        # 通道注意力
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         
@@ -205,7 +196,7 @@ class CBAM2D(nn.Module):
         )
         self.sigmoid_channel = nn.Sigmoid()
         
-        # 空间注意力
+
         self.conv_spatial = nn.Sequential(
             nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False),
             nn.BatchNorm2d(1)
@@ -249,20 +240,9 @@ if __name__ == "__main__":
     with torch.no_grad():
         output = model(x)
     
-    print(f"输出形状: {output.shape}")  # [2, 4]
-    print(f"输出范围: [{output.min():.4f}, {output.max():.4f}]")
-    print(f"\n第一个样本的边界框: {output[0]}")
     
     # 计算参数量
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"\n总参数量: {total_params:,}")
-    
-    print("\n✓ 2D检测模型测试通过!")
-    
-    # 测试注意力模型
-    print("\n" + "=" * 60)
-    print("测试注意力2D检测模型")
-    print("=" * 60)
     
     model_att = AttentionDetection2D(in_channels=2, init_features=16)
     
@@ -275,4 +255,4 @@ if __name__ == "__main__":
     total_params_att = sum(p.numel() for p in model_att.parameters())
     print(f"总参数量: {total_params_att:,}")
     
-    print("\n✓ 注意力2D检测模型测试通过!")
+
