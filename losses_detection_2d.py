@@ -1,16 +1,10 @@
-"""
-2D检测任务的损失函数和评估指标
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class BBoxLoss(nn.Module):
-    """
-    边界框回归损失（2D版本）
-    结合 Smooth L1 Loss 和 IoU Loss
-    """
+    
     def __init__(self, use_iou_loss=True, iou_weight=2.0, l1_weight=0.5):
         super(BBoxLoss, self).__init__()
         self.use_iou_loss = use_iou_loss
@@ -19,19 +13,16 @@ class BBoxLoss(nn.Module):
         self.smooth_l1 = nn.SmoothL1Loss()
     
     def forward(self, pred_bbox, target_bbox):
-        """
-        pred_bbox: [B, 4] - 预测的边界框
-        target_bbox: list of [N_i, 4] - 真实的边界框（每个样本可能有多个）
-        """
-        # 如果target是list，取每个样本的第一个框
+       
+        
         if isinstance(target_bbox, list):
             target_bbox = torch.stack([bbox[0] for bbox in target_bbox])  # [B, 4]
         
-        # 如果target有多个框，取第一个
+       
         if target_bbox.dim() == 3:
             target_bbox = target_bbox[:, 0, :]  # [B, 4]
         
-        # Smooth L1 Loss（坐标回归）
+        
         l1_loss = self.smooth_l1(pred_bbox, target_bbox)
         
         total_loss = self.l1_weight * l1_loss
@@ -45,23 +36,17 @@ class BBoxLoss(nn.Module):
 
 
 class GIoULoss(nn.Module):
-    """
-    Generalized IoU Loss（2D版本）
-    更好地处理不重叠的边界框
-    """
+   
     def __init__(self):
         super(GIoULoss, self).__init__()
     
     def forward(self, pred_bbox, target_bbox):
-        """
-        pred_bbox: [B, 4]
-        target_bbox: list of [N_i, 4] 或 [B, N, 4] 或 [B, 4]
-        """
-        # 如果target是list，取每个样本的第一个框
+       
+       
         if isinstance(target_bbox, list):
             target_bbox = torch.stack([bbox[0] for bbox in target_bbox])
         
-        # 如果target有多个框，取第一个
+       
         if target_bbox.dim() == 3:
             target_bbox = target_bbox[:, 0, :]
         
@@ -71,23 +56,17 @@ class GIoULoss(nn.Module):
 
 
 class CIoULoss(nn.Module):
-    """
-    Complete IoU Loss（2D版本）
-    考虑中心点距离和宽高比，更适合小目标
-    """
+    
     def __init__(self):
         super(CIoULoss, self).__init__()
     
     def forward(self, pred_bbox, target_bbox):
-        """
-        pred_bbox: [B, 4]
-        target_bbox: list of [N_i, 4] 或 [B, 4]
-        """
-        # 如果target是list，取每个样本的第一个框
+       
+        
         if isinstance(target_bbox, list):
             target_bbox = torch.stack([bbox[0] for bbox in target_bbox])
         
-        # 如果target有多个框，取第一个
+        
         if target_bbox.dim() == 3:
             target_bbox = target_bbox[:, 0, :]
         
@@ -97,13 +76,8 @@ class CIoULoss(nn.Module):
 
 
 def bbox_iou_2d(bbox1, bbox2):
-    """
-    计算2D边界框的IoU
     
-    bbox: [B, 4] - [x_min, y_min, x_max, y_max]
-    返回: [B] - 每个样本的IoU
-    """
-    # 确保是2D tensor
+   
     if bbox1.dim() == 1:
         bbox1 = bbox1.unsqueeze(0)
     if bbox2.dim() == 1:
@@ -143,13 +117,8 @@ def bbox_iou_2d(bbox1, bbox2):
 
 
 def bbox_giou_2d(bbox1, bbox2):
-    """
-    计算2D边界框的GIoU (Generalized IoU)
     
-    bbox: [B, 4]
-    返回: [B]
-    """
-    # 确保是2D tensor
+   
     if bbox1.dim() == 1:
         bbox1 = bbox1.unsqueeze(0)
     if bbox2.dim() == 1:
@@ -252,16 +221,12 @@ def bbox_ciou_2d(bbox1, bbox2):
 
 
 def compute_detection_metrics(pred_bbox, target_bbox):
-    """
-    计算检测任务的评估指标（2D版本）
     
-    返回: dict with IoU, GIoU, etc.
-    """
-    # 如果target是list，取每个样本的第一个框
+    
     if isinstance(target_bbox, list):
         target_bbox = torch.stack([bbox[0] for bbox in target_bbox])
     
-    # 如果target有多个框，取第一个
+   
     if target_bbox.dim() == 3:
         target_bbox = target_bbox[:, 0, :]
     
@@ -281,63 +246,3 @@ def compute_detection_metrics(pred_bbox, target_bbox):
     
     return metrics
 
-
-# 测试代码
-if __name__ == "__main__":
-    print("=" * 60)
-    print("测试2D检测损失函数和评估指标")
-    print("=" * 60)
-    
-    # 创建测试数据
-    batch_size = 4
-    pred_bbox = torch.rand(batch_size, 4)  # 随机预测
-    target_bbox = torch.rand(batch_size, 4)  # 随机真实值
-    
-    # 确保边界框格式正确 (min < max)
-    pred_bbox[:, 2:] = pred_bbox[:, :2] + torch.abs(pred_bbox[:, 2:] - pred_bbox[:, :2])
-    target_bbox[:, 2:] = target_bbox[:, :2] + torch.abs(target_bbox[:, 2:] - target_bbox[:, :2])
-    
-    print(f"\n预测边界框形状: {pred_bbox.shape}")
-    print(f"真实边界框形状: {target_bbox.shape}")
-    print(f"\n第一个样本:")
-    print(f"  预测: {pred_bbox[0]}")
-    print(f"  真实: {target_bbox[0]}")
-    
-    # 测试IoU
-    print("\n" + "=" * 60)
-    print("测试IoU计算")
-    print("=" * 60)
-    iou = bbox_iou_2d(pred_bbox, target_bbox)
-    print(f"IoU: {iou}")
-    print(f"平均IoU: {iou.mean():.4f}")
-    
-    # 测试GIoU
-    print("\n" + "=" * 60)
-    print("测试GIoU计算")
-    print("=" * 60)
-    giou = bbox_giou_2d(pred_bbox, target_bbox)
-    print(f"GIoU: {giou}")
-    print(f"平均GIoU: {giou.mean():.4f}")
-    
-    # 测试损失函数
-    print("\n" + "=" * 60)
-    print("测试损失函数")
-    print("=" * 60)
-    
-    bbox_loss = BBoxLoss(use_iou_loss=True, iou_weight=1.0, l1_weight=1.0)
-    loss = bbox_loss(pred_bbox, target_bbox)
-    print(f"BBox Loss: {loss:.4f}")
-    
-    giou_loss_fn = GIoULoss()
-    giou_loss = giou_loss_fn(pred_bbox, target_bbox)
-    print(f"GIoU Loss: {giou_loss:.4f}")
-    
-    # 测试评估指标
-    print("\n" + "=" * 60)
-    print("测试评估指标")
-    print("=" * 60)
-    metrics = compute_detection_metrics(pred_bbox, target_bbox)
-    for name, value in metrics.items():
-        print(f"{name}: {value:.4f}")
-    
-    print("\n✓ 所有测试通过!")
